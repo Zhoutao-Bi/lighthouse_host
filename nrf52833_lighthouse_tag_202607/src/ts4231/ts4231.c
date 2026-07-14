@@ -74,6 +74,7 @@ int ts4231_init(ts4231_sensor_t *sensor, uint32_t timeout_ms)
 
 	if (sensor->current_state != WATCH_STATE) {
 		sensor->config_result = ts4231_configDevice(sensor);
+		sensor->current_state = ts4231_checkBus(sensor);
 		while ((sensor->current_state != WATCH_STATE) &&
 		       (sensor->config_result != CONFIG_PASS) &&
 		       (repeat_config < 10)) {

@@ -45,14 +45,20 @@ static struct {
 
 static void pose_q_push(const lighthouse_pkt_t *p)
 {
-	uint32_t tail = (uint32_t)atomic_inc(&pose_q.tail);
+	uint32_t tail = (uint32_t)atomic_get(&pose_q.tail);
 	pose_q.buf[tail % POSE_Q_SIZE] = *p;
+	atomic_inc(&pose_q.tail);
+
+	uint32_t head = (uint32_t)atomic_get(&pose_q.head);
+	if ((uint32_t)(atomic_get(&pose_q.tail) - head) >= POSE_Q_SIZE) {
+		atomic_inc(&pose_q.head);
+	}
 }
 
 static bool pose_q_pop(lighthouse_pkt_t *out)
 {
-	uint32_t head = (uint32_t)atomic_get(&pose_q.head);
 	uint32_t tail = (uint32_t)atomic_get(&pose_q.tail);
+	uint32_t head = (uint32_t)atomic_get(&pose_q.head);
 
 	if (head >= tail) {
 		return false;
@@ -110,6 +116,7 @@ int main(void)
 
 	pos_init();
 	robot_pose_init();
+	ppi_init(TIMER_3);
 
 	ts4231_sensor_t *handles[3] = {
 		ts4231_n1_handle(),
@@ -185,16 +192,11 @@ int main(void)
 
 			pose_q_push(&pkt);
 
-			lighthouse_pkt_t out;
-			while (pose_q_pop(&out)) {
-				float x = out.x_le;
-				float y = out.y_le;
-				float z = out.z_le;
-				uint16_t id = (uint16_t)((uint16_t)out.id_hi << 8) | out.id_lo;
-				const char *m = (out.mode == 0x03) ? "3D" : "2D";
-				printk("x=%.3f y=%.3f z=%.3f id=%u mode=%s\n",
-				       (double)x, (double)y, (double)z, id, m);
-			}
+			uint16_t id = (uint16_t)((uint16_t)pkt.id_hi << 8) | pkt.id_lo;
+			const char *m = (pkt.mode == 0x03) ? "3D" : "2D";
+			printk("x=%.3f y=%.3f z=%.3f id=%u mode=%s\n",
+			       (double)pkt.x_le, (double)pkt.y_le, (double)pkt.z_le,
+			       id, m);
 		}
 		k_msleep(10);
 	}
