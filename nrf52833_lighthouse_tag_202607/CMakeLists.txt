@@ -12,6 +12,8 @@ target_sources(app PRIVATE
 	src/ppi/timer.c
 	src/ts4231/ts4231.c
 	src/ts4231/ts4231_sensors.c
+	src/pos/pos.c
+	src/robot_pose/robot_pose.c
 )
 
 target_include_directories(app PRIVATE
@@ -20,4 +22,6 @@ target_include_directories(app PRIVATE
 	src/bt_scan
 	src/ppi
 	src/ts4231
+	src/pos
+	src/robot_pose
 )

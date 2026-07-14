@@ -7,6 +7,22 @@
 #include "ts4231.h"
 #include "ts4231_sensors.h"
 #include "ppi.h"
+#include "pos.h"
+#include "robot_pose.h"
+
+static const lighthouse_point cal_pos[] = {
+	{0.0, 0.0, 0.0},
+	{594.0, 0.0, 0.0},
+	{594.0, 420.0, 0.0}
+};
+
+static const lighthouse_angles cal_angles[] = {
+	{82.556, 74.598},
+	{88.518, 87.382},
+	{81.198, 91.95}
+};
+
+static lighthouse_result calib_result;
 
 static size_t counter_provider(uint8_t *buf, size_t max_len)
 {
@@ -52,6 +68,9 @@ int main(void)
 	led_init();
 	led_set_mode(LED_MODE_INIT);
 
+	pos_init();
+	robot_pose_init();
+
 	ts4231_init();
 	if (!ts4231_is_lighthouse()) {
 		led_set_mode(LED_MODE_ERROR);
@@ -59,7 +78,10 @@ int main(void)
 	}
 
 	ts4231_sensor_attach_ppi_index(ts4231_default_handle(), TIMER_3, 0);
-	ppi_set_light_signal_ex_callback(on_pulse);
+
+	if (lighthouse_calibrate(cal_pos, cal_angles, &calib_result) == 0) {
+		robot_pose_set_calib_data(&calib_result);
+	}
 
 	int err = bt_enable(NULL);
 	if (err) {
@@ -79,6 +101,11 @@ int main(void)
 	if (err) {
 		led_set_mode(LED_MODE_ERROR);
 		return err;
+	}
+
+	while (1) {
+		robot_pose_update();
+		k_msleep(100);
 	}
 
 	return 0;
