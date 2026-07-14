@@ -1,0 +1,14 @@
+description: TS4231 lighthouse optical sensor (E = clock, D = data)
+compatible: "lighthouse_robot,ts4231"
+
+include: [base.yaml]
+
+properties:
+  e-gpios:
+    type: phandle-array
+    required: true
+    description: E (clock) pin
+  d-gpios:
+    type: phandle-array
+    required: true
+    description: D (data) pin

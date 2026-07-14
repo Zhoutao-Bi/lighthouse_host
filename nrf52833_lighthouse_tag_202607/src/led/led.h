@@ -3,12 +3,18 @@
 
 #include <stdint.h>
 
-#define LED_DEFAULT_PERIOD_MS 500U
+enum led_mode {
+	LED_MODE_OFF = 0,
+	LED_MODE_INIT,
+	LED_MODE_BROADCASTING,
+	LED_MODE_ERROR,
+};
 
-int led_init(void);
-int led_on(void);
-int led_off(void);
-int led_toggle(void);
-int led_blink(uint32_t period_ms);
+int  led_init(void);
+int  led_on(void);
+int  led_off(void);
+int  led_toggle(void);
+void led_set_mode(enum led_mode mode);
+void led_notify_rx(void);
 
 #endif /* LED_H */

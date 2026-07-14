@@ -1,14 +1,64 @@
 #include <zephyr/kernel.h>
+#include <string.h>
 
 #include "led.h"
+#include "bt_advertise.h"
+#include "bt_scan.h"
+
+static size_t counter_provider(uint8_t *buf, size_t max_len)
+{
+	const size_t need = 2 + sizeof(uint32_t);
+
+	if (max_len < need) {
+		return 0;
+	}
+
+	static uint32_t counter;
+
+	buf[0] = 0xFF;
+	buf[1] = 0xFF;
+	memcpy(&buf[2], &counter, sizeof(counter));
+	counter++;
+
+	return need;
+}
+
+static void on_rx(const uint8_t *data, size_t len, int8_t rssi,
+		  const bt_addr_le_t *addr)
+{
+	if (addr != NULL) {
+		printk("RX %02x:%02x:%02x:%02x:%02x:%02x rssi=%d len=%zu\n",
+		       addr->a.val[5], addr->a.val[4], addr->a.val[3],
+		       addr->a.val[2], addr->a.val[1], addr->a.val[0],
+		       rssi, len);
+	}
+	bt_advertise_notify_rx();
+}
 
 int main(void)
 {
-	int err = led_init();
+	led_init();
+	led_set_mode(LED_MODE_INIT);
 
+	int err = bt_enable(NULL);
 	if (err) {
+		led_set_mode(LED_MODE_ERROR);
 		return err;
 	}
 
-	return led_blink(LED_DEFAULT_PERIOD_MS);
+	bt_advertise_set_payload_provider(counter_provider);
+	err = bt_advertise_start();
+	if (err) {
+		led_set_mode(LED_MODE_ERROR);
+		return err;
+	}
+
+	bt_scan_register_callback(on_rx);
+	err = bt_scan_start();
+	if (err) {
+		led_set_mode(LED_MODE_ERROR);
+		return err;
+	}
+
+	return 0;
 }
