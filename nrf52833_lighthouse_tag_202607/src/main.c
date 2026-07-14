@@ -4,6 +4,7 @@
 #include "led.h"
 #include "bt_advertise.h"
 #include "bt_scan.h"
+#include "ts4231.h"
 
 static size_t counter_provider(uint8_t *buf, size_t max_len)
 {
@@ -39,6 +40,12 @@ int main(void)
 {
 	led_init();
 	led_set_mode(LED_MODE_INIT);
+
+	ts4231_init();
+	if (!ts4231_is_lighthouse()) {
+		led_set_mode(LED_MODE_ERROR);
+		return -ENODEV;
+	}
 
 	int err = bt_enable(NULL);
 	if (err) {
