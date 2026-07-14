@@ -24,20 +24,26 @@ static const lighthouse_angles cal_angles[] = {
 
 static lighthouse_result calib_result;
 
-static size_t counter_provider(uint8_t *buf, size_t max_len)
+static size_t pose_provider(uint8_t *buf, size_t max_len)
 {
-	const size_t need = 2 + sizeof(uint32_t);
+	const size_t need = 2 + 1 + 1 + 1 + 1 + 8 * 3 + 4;
 
 	if (max_len < need) {
 		return 0;
 	}
 
-	static uint32_t counter;
+	const robot_pose_t *pose = robot_pose_get();
 
 	buf[0] = 0xFF;
 	buf[1] = 0xFF;
-	memcpy(&buf[2], &counter, sizeof(counter));
-	counter++;
+	buf[2] = pose->valid ? 1u : 0u;
+	buf[3] = pose->valid_sensor_count;
+	buf[4] = pose->valid_sensor_mask;
+	buf[5] = 0;
+	memcpy(&buf[6], &pose->position.x, sizeof(double));
+	memcpy(&buf[14], &pose->position.y, sizeof(double));
+	memcpy(&buf[22], &pose->position.z, sizeof(double));
+	memcpy(&buf[30], &pose->heading_deg, sizeof(float));
 
 	return need;
 }
@@ -89,7 +95,7 @@ int main(void)
 		return err;
 	}
 
-	bt_advertise_set_payload_provider(counter_provider);
+	bt_advertise_set_payload_provider(pose_provider);
 	err = bt_advertise_start();
 	if (err) {
 		led_set_mode(LED_MODE_ERROR);
@@ -105,6 +111,17 @@ int main(void)
 
 	while (1) {
 		robot_pose_update();
+		const robot_pose_t *pose = robot_pose_get();
+
+		if (pose->valid) {
+			float heading;
+			if (robot_pose_get_heading_deg(&heading)) {
+				printk("pose x=%.1f y=%.1f z=%.1f h=%.1f sensors=%u mask=0x%x\n",
+				       pose->position.x, pose->position.y, pose->position.z,
+				       (double)heading, pose->valid_sensor_count,
+				       pose->valid_sensor_mask);
+			}
+		}
 		k_msleep(100);
 	}
 
