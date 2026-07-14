@@ -12,6 +12,7 @@
 
 #include "pos.h"
 #include "ppi.h"
+#include "../lighthouse_config.h"
 
 #include <math.h>
 #include <string.h>
@@ -677,13 +678,35 @@ int pos_get_sensor_position(uint8_t sensor_idx,
 		return -1;
 	}
 
-	int ret = lighthouse_get_position_simple(
+	int ret;
+#if LIGHTHOUSE_MODE_3D
+	ARG_UNUSED(calib_data);
+	ret = -ENOTSUP;
+#else
+	ret = lighthouse_get_position_simple(
 		calib_data, pos_vars.A_Y_theta_alpha[sensor_idx],
 		pos_vars.A_X_theta_beta[sensor_idx], out_pos);
+#endif
 	if (ret == 0) {
 		pos_vars.robot_pos[sensor_idx] = *out_pos;
 	}
 	return ret;
+}
+
+int lighthouse_get_position_3d(const lighthouse_result *calib_a,
+			      const lighthouse_result *calib_b,
+			      double alpha_a_deg, double beta_a_deg,
+			      double alpha_b_deg, double beta_b_deg,
+			      lighthouse_point *out_pos)
+{
+	ARG_UNUSED(calib_a);
+	ARG_UNUSED(calib_b);
+	ARG_UNUSED(alpha_a_deg);
+	ARG_UNUSED(beta_a_deg);
+	ARG_UNUSED(alpha_b_deg);
+	ARG_UNUSED(beta_b_deg);
+	ARG_UNUSED(out_pos);
+	return -ENOTSUP;
 }
 
 uint8_t pos_get_sensor_count(void)

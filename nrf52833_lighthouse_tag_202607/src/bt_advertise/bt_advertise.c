@@ -53,8 +53,8 @@ int bt_advertise_start(void)
 {
 	static const struct bt_le_adv_param adv_param = {
 		.id = BT_ID_DEFAULT,
-		.interval_min = BT_GAP_ADV_FAST_INT_MIN_2,
-		.interval_max = BT_GAP_ADV_FAST_INT_MAX_2,
+		.interval_min = BT_GAP_ADV_FAST_INT_MIN_1,
+		.interval_max = BT_GAP_ADV_FAST_INT_MAX_1,
 		.options = BT_LE_ADV_OPT_NONE,
 	};
 

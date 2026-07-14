@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BT_ADV_REFRESH_PERIOD_MS 100
+#define BT_ADV_REFRESH_PERIOD_MS 20
 #define BT_ADV_MAX_PAYLOAD       64
 
 typedef size_t (*bt_adv_payload_fn_t)(uint8_t *buf, size_t max_len);

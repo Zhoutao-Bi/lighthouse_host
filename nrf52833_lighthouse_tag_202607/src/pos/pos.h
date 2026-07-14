@@ -49,6 +49,11 @@ int lighthouse_calibrate(const lighthouse_point world_points[],
 int lighthouse_get_position_simple(const lighthouse_result *calib_data,
 				   double alpha_deg, double beta_deg,
 				   lighthouse_point *out_pos);
+int lighthouse_get_position_3d(const lighthouse_result *calib_a,
+			      const lighthouse_result *calib_b,
+			      double alpha_a_deg, double beta_a_deg,
+			      double alpha_b_deg, double beta_b_deg,
+			      lighthouse_point *out_pos);
 float pos_get_A_X_theta_beta(uint8_t sensor_idx);
 float pos_get_A_Y_theta_alpha(uint8_t sensor_idx);
 const uint8_t *pos_get_data_xy(uint8_t sensor_idx);

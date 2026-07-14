@@ -44,22 +44,30 @@ typedef struct {
 	uint8_t chip_state;
 } ts4231_sensor_t;
 
-void ts4231_init(void);
-bool ts4231_is_lighthouse(void);
-ts4231_sensor_t *ts4231_default_handle(void);
-bool ts4231_waitForLight(void);
-uint8_t ts4231_configDevice(void);
-uint16_t ts4231_readConfig(void);
-void ts4231_writeConfig(uint16_t config_val);
-uint8_t ts4231_checkBus(void);
-bool ts4231_goToSleep(void);
-bool ts4231_goToWatch(void);
+int  ts4231_init(ts4231_sensor_t *sensor, uint32_t timeout_ms);
+bool ts4231_is_lighthouse(const ts4231_sensor_t *sensor);
+
+ts4231_sensor_t *ts4231_n1_handle(void);
+ts4231_sensor_t *ts4231_n2_handle(void);
+ts4231_sensor_t *ts4231_n3_handle(void);
+
+bool ts4231_waitForLight(ts4231_sensor_t *sensor, uint32_t timeout_ms);
+uint8_t ts4231_configDevice(ts4231_sensor_t *sensor);
+uint16_t ts4231_readConfig(const ts4231_sensor_t *sensor);
+void ts4231_writeConfig(ts4231_sensor_t *sensor, uint16_t config_val);
+uint8_t ts4231_checkBus(const ts4231_sensor_t *sensor);
+bool ts4231_goToSleep(ts4231_sensor_t *sensor);
+bool ts4231_goToWatch(ts4231_sensor_t *sensor);
+
 void ts4231_pinMode(const struct gpio_dt_spec *spec, uint8_t mode);
 uint32_t ts4231_digitalRead(const struct gpio_dt_spec *spec);
 void ts4231_digitalWrite(const struct gpio_dt_spec *spec, uint8_t output_mode);
-void ts4231_set_pins(const struct gpio_dt_spec *e_spec,
+
+void ts4231_set_pins(ts4231_sensor_t *sensor,
+		     const struct gpio_dt_spec *e_spec,
 		     const struct gpio_dt_spec *d_spec);
-void ts4231_init_with_params(const struct gpio_dt_spec *e_spec,
+void ts4231_init_with_params(ts4231_sensor_t *sensor,
+			     const struct gpio_dt_spec *e_spec,
 			     const struct gpio_dt_spec *d_spec);
 void ts4231_sensor_init(ts4231_sensor_t *sensor);
 
