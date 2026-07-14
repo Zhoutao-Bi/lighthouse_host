@@ -8,12 +8,16 @@ target_sources(app PRIVATE
 	src/led/led.c
 	src/bt_advertise/bt_advertise.c
 	src/bt_scan/bt_scan.c
+	src/ppi/ppi.c
+	src/ppi/timer.c
 	src/ts4231/ts4231.c
+	src/ts4231/ts4231_sensors.c
 )
 
 target_include_directories(app PRIVATE
 	src/led
 	src/bt_advertise
 	src/bt_scan
+	src/ppi
 	src/ts4231
 )

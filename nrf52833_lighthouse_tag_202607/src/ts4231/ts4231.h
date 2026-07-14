@@ -46,6 +46,7 @@ typedef struct {
 
 void ts4231_init(void);
 bool ts4231_is_lighthouse(void);
+ts4231_sensor_t *ts4231_default_handle(void);
 bool ts4231_waitForLight(void);
 uint8_t ts4231_configDevice(void);
 uint16_t ts4231_readConfig(void);

@@ -78,6 +78,10 @@ bool ts4231_is_lighthouse(void) {
 	return ts4231_var.is_lighthouse;
 }
 
+ts4231_sensor_t *ts4231_default_handle(void) {
+	return &ts4231_var;
+}
+
 bool ts4231_waitForLight(void) {
 	bool light = false;
 	bool exit_flag = false;

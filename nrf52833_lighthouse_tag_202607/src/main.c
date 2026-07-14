@@ -5,6 +5,8 @@
 #include "bt_advertise.h"
 #include "bt_scan.h"
 #include "ts4231.h"
+#include "ts4231_sensors.h"
+#include "ppi.h"
 
 static size_t counter_provider(uint8_t *buf, size_t max_len)
 {
@@ -36,6 +38,15 @@ static void on_rx(const uint8_t *data, size_t len, int8_t rssi,
 	bt_advertise_notify_rx();
 }
 
+static void on_pulse(uint8_t sensor_idx, uint32_t t_start, uint32_t t_end,
+		     uint32_t duration)
+{
+	ARG_UNUSED(sensor_idx);
+	ARG_UNUSED(t_start);
+	ARG_UNUSED(t_end);
+	ARG_UNUSED(duration);
+}
+
 int main(void)
 {
 	led_init();
@@ -46,6 +57,9 @@ int main(void)
 		led_set_mode(LED_MODE_ERROR);
 		return -ENODEV;
 	}
+
+	ts4231_sensor_attach_ppi_index(ts4231_default_handle(), TIMER_3, 0);
+	ppi_set_light_signal_ex_callback(on_pulse);
 
 	int err = bt_enable(NULL);
 	if (err) {
