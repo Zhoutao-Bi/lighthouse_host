@@ -13,6 +13,10 @@
 #include "robot_pose.h"
 #include "lighthouse_config.h"
 #include "lighthouse_pkt.h"
+#include "uart_out.h"
+
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(main_app, CONFIG_LOG_DEFAULT_LEVEL);
 
 static const lighthouse_point cal_pos[] = {
 	{0.0, 0.0, 0.0},
@@ -108,6 +112,13 @@ int main(void)
 
 	pos_init();
 	robot_pose_init();
+
+	const struct device *uart0 = DEVICE_DT_GET(DT_NODELABEL(uart0));
+	if (uart_out_init(uart0) != 0) {
+		LOG_WRN("uart0 not ready; pose stream disabled");
+		/* do not abort — BLE path still works */
+	}
+
 	ppi_init(TIMER_3);
 
 	ts4231_sensor_t *handles[3] = {
@@ -183,12 +194,7 @@ int main(void)
 			pkt.z_le = (float)pose->position.z;
 
 			pose_q_push(&pkt);
-
-			uint16_t id = (uint16_t)((uint16_t)pkt.id_hi << 8) | pkt.id_lo;
-			const char *m = (pkt.mode == 0x03) ? "3D" : "2D";
-			printk("x=%.3f y=%.3f z=%.3f id=%u mode=%s\n",
-			       (double)pkt.x_le, (double)pkt.y_le, (double)pkt.z_le,
-			       id, m);
+			uart_out_push(&pkt);
 		}
 		k_msleep(10);
 	}
