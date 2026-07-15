@@ -17,13 +17,15 @@
 | 器件 | 作用 | 引脚（nrf52833dk） |
 |---|---|---|
 | nRF52833 | MCU | 板载 |
-| TS4231 × 1 | V1 lighthouse 光学传感器（E=clock, D=data） | E=P1.09, D=P0.11 |
+| TS4231 ×3 | V1 lighthouse 光学传感器（E=clock, D=data），3 颗 120° 等距 | N1: E=P1.09, D=P0.11<br>N2: E=P0.03, D=P0.02<br>N3: E=P0.09, D=P0.10 |
 | 用户 LED | 状态指示 | P0.20 |
 | Lighthouse 基站 | V1 模式（sweep + sync） | 不接 MCU |
 
-**当前固件源码支持 3 个 TS4231 sensor**（devicetree overlay 声明 N1/N2/N3 三节点），
-但 nrf52833dk 开发板上**只有 N1 实际布线**（E=P1.09, D=P0.11）；N2/N3 节点存在但硬件
-未接。要扩到 3 sensor 见 `限制 §1`。
+**3 颗 sensor 默认全部布线**（按 overlay 引脚表），代码已支持 3 sensor 主循环：
+`main.c` 顺序 init `ts4231_n1/2/3_handle()` 并各自 attach PPI channel 0/1、2/3、4/5；
+`robot_pose_update` 要求至少 2 个 valid sensor（`ROBOT_POSE_MIN_VALID_SENSORS=2`）才
+出 `pose.valid=true`。三颗 120° 等距排列，半径 12.729 mm（见 `robot_pose.h` 的
+`ROBOT_POSE_SENSOR{0,1,2}_ANGLE_DEG`）。少接几颗 main.c 会 fail-fast 跳过失败的，~50 ms/颗。
 
 ## 已实现的功能
 
@@ -33,24 +35,43 @@
 - **non-connectable** undirected advertising
 - **17 字节** manufacturer data（2 字节 Company ID + 15 字节 payload）
 - 广播数据更新周期 **20 ms**（`BT_ADV_REFRESH_PERIOD_MS`），主循环每 10 ms 把最新位姿压入 4 项环形队列 `pose_q`，BLE 侧按 drop-oldest 取最新
-- 监听：被动 scan，看到其他 robot 的广播触发 LED 闪一下
+- **air interval = 20 ms 固定**（BLE 5 legacy adv 规范下限，对应 `0x0020` 单位 = 32 × 0.625 ms）：
+  空口速率 **50 Hz**，与 firmware timer 同步。原先用 `BT_GAP_ADV_FAST_INT_{MIN,MAX}_1`
+  30–60 ms randomize 时实际只有 ~22 Hz on air。BLE 规范硬下限是 20 ms，50 Hz 是单板极限。
+- **初始 advert 只含 `BT_DATA_FLAGS`**：`bt_le_adv_start()` 第一个 AD 是 flag；
+  第一个 20 ms timer tick 后，`adv_work_handler` 调 `bt_le_adv_update_data(&mfg_ad, 1, NULL, 0)`
+  把**整个 adv data set 替换为 manufacturer data**，flags 字节消失。后续每 20 ms
+  继续 update；前 20 ms 内手机 nRF Connect 可能看不到 manufacturer 段。
+- **scan 过滤 = 不过滤**：任何 BLE 设备的 manufacturer data（不限于本协议 / 不限于
+  其他 robot / 不区分是否自家广播）都触发 LED 闪一下。
+  `bt_scan.c::mfg_data_cb` 仅检查 `data->type == BT_DATA_MANUFACTURER_DATA` 且
+  `data_len >= 2`，`on_rx` 回调里 `ARG_UNUSED(data, len, rssi, addr)` 完全不读内容。
+  后续要"只盯自家广播"，得在 `mfg_data_cb` 里比对前 2 字节 `0xFFFF 0xFFFF`
 - 不支持 GATT 连接、不需要 central 角色（**两板之间不自动连接**，仅"看得到"）
 
 ### 2. LED 状态灯（P0.20）
 
-5 种状态模式：
+`enum led_mode` 实际只定义 **4** 个常驻 mode：
 - `OFF`：灭
 - `INIT`：上电 200 ms 闪
 - `BROADCASTING`：BLE 启动后 500 ms 慢闪（默认）
 - `ERROR`：出错常亮
-- `RX`：收到其他板广播时闪 200 ms（多个相邻 RX 会被合并成持续快闪）
+
+**RX 闪烁是叠加在当前 mode 上的脉冲，不是独立 mode**。`led_notify_rx()` 把
+`pulse_remaining_ms` 设为 `LED_PULSE_MS`（200 ms），期间 `led_thread_fn` 走 toggle
+路径（`LED_PULSE_TICK_MS=50` ms tick），在常驻 mode 之上叠加快闪；超时后回到常驻 mode。
+多个相邻 RX 会被合并成持续快闪。
 
 ### 3. TS4231 驱动
 
 - I2C-like 位翻转协议（**不是 SPI**）配置 chip：state machine 检测 + 14/15-bit config 读写
-- E（P1.09）/ D（P0.11）引脚从 devicetree 拿
-- `ts4231_init()`：循环尝试配置直到 chip 进入 WATCH state
-- `ts4231_is_lighthouse()`：是否检测到 lighthouse 信号
+- 3 颗 sensor 的 E/D 引脚从 devicetree overlay 拿：
+  - N1: E=P1.09, D=P0.11
+  - N2: E=P0.03, D=P0.02
+  - N3: E=P0.09, D=P0.10
+- `ts4231_init(handle, 50)`：50 ms 兜底（`ts4231_waitForLight` 用 deadline 限内/外层 while），
+  循环尝试 config 直到 chip 进 WATCH state
+- `ts4231_is_lighthouse()`：是否检测到 lighthouse 信号（init 成功 → true）
 - 完整保留源 BSD license 头
 
 ### 4. PPI 脉冲捕获（GPIOTE + PPI + TIMER3 + ISR）
@@ -59,7 +80,10 @@
 - `ppi_init_multi(TIMER_3, sensor_count)`：PPI 路由 GPIOTE event → TIMER3 CC 捕获任务（**无 CPU 介入**）
 - `ppi_set_light_signal_ex_callback()`：注册 ISR 回调
 - **ZLI (zero-latency interrupt)**：用 `IRQ_DIRECT_CONNECT` 直连向量表，绕过 .intList 避免与 nrfx 默认 handler 冲突
-- 1 个 sensor 占用 GPIOTE channel 0/1 + PPI channel 0/1 + TIMER3 CC0/CC1
+- 每个 sensor 占 2 个 channel（falling + rising）：sensor `i` → GPIOTE channel
+  `2i` / `2i+1` → PPI channel `2i` / `2i+1` → TIMER3 CC`2i` / CC`2i+1`。
+  3 颗 sensor 共用 GPIOTE 0..5 + PPI 0..5 + TIMER3 CC0..5。
+  `PPI_MAX_SENSORS=3`。
 
 ### 5. Lighthouse 算法（V1）
 
@@ -121,10 +145,10 @@
 ```
 nrf52833_lighthouse_tag_202607/
 ├── CMakeLists.txt              # 10 源文件
-├── prj.conf                    # BT + GPIO + ZERO_LATENCY_IRQS
+├── prj.conf                    # BT (PERIPHERAL+OBSERVER) + GPIO + LOG(level 3) + ZERO_LATENCY_IRQS + 无 privacy/settings
 ├── boards/
 │   └── nrf52833dk_nrf52833.overlay  # user_led + ts4231_n1/n2/n3 节点
-│                                     # （DK 上仅 N1 实际布线；N2/N3 节点存在但未接）
+│                                     # （默认 3 颗都接：N1=P1.09/P0.11, N2=P0.03/P0.02, N3=P0.09/P0.10）
 ├── dts/bindings/
 │   └── lighthouse_robot,ts4231/    # 自定义 binding
 │       └── lighthouse_robot,ts4231.yaml
@@ -185,13 +209,17 @@ const lighthouse_angles cal_angles[] = {
 
 ## 限制
 
-1. **单 sensor**：devicetree overlay 声明 N1/N2/N3 三个节点，**但 nrf52833dk 上仅 N1
-   (E=P1.09, D=P0.11) 实际布线**；N2/N3 节点存在但未接物理 sensor，`ts4231_init()` 对它们
-   会 `ts4231_waitForLight` 超时返回 `-ETIMEDOUT`（受 `限制 §2` 影响会卡住）。
-   要扩到 3 sensor 需在硬件上把 N2/N3 接到 `(P0.03/P0.02)` 和 `(P0.09/P0.10)`，并补 `ts4231_n2/3_handle()`
-   的初始化逻辑（main.c 已经按 3-handle 数组循环）。
-2. **TS4231 故障容错差**：`ts4231_waitForLight()` 内部死循环。没接硬件时 `ts4231_init()`
-   会卡住，LED 保持 INIT 闪。源码就是这样，**没改**。
+1. **3 sensor 默认都接好**：overlay 引脚 N1=`P1.09/P0.11`、N2=`P0.03/P0.02`、
+   N3=`P0.09/P0.10`，main.c 顺序 init 三个 handle。少接 1~2 颗也能跑：失败的 sensor
+   在 ~50 ms 内 `waitForLight` → false → `ts4231_init` 返 `-ETIMEDOUT`，main.c `continue` 跳过，
+   `robot_pose_update` 用剩余 valid sensor 算位姿（至少要 2 颗 valid 才 `pose.valid=true`）。
+   若实际接线与 overlay 不一致（例如用了别的脚 / 想减成 1~2 颗）：
+   - 改 `boards/nrf52833dk_nrf52833.overlay` 里 `ts4231_n{1,2,3}` 节点的 `e-gpios/d-gpios`
+   - main.c 的 `handles[3]` 数组和 PPI `sensor_idx` 已是 3 槽，无需改代码
+2. **TS4231 init 50 ms 兜底**：`ts4231_waitForLight()` 实际带 `timeout_ms`（main.c
+   传 50 ms），内/外层 while 都检 `k_uptime_get() < deadline`。副作用：lighthouse 信号
+   短暂中断时若某 sensor 跑出 S0_STATE，下次 init 仍会等满 50 ms 才承认失败——正常运行
+   过程不会出现，仅适用于上电/重 init 路径。
 3. **不做 GATT 连接 / Mesh / Pairing**：纯广播。手机 nRF Connect 能看到，标准 BLE 库能
    读 manufacturer data，但**两 robot 板之间不互连**。
 4. **校准数据硬编码**：运行时不能再校准。要重新校准需要改 `main.c` 重烧。
@@ -240,3 +268,39 @@ fb80523 D1: BLE broadcaster + LED status indicator + TS4231 devicetree binding
 `lighthouse_20260714` 分支。
 
 > README 之后，本地又修了一组 bug（B1–B4，参见 `已知问题 / Known Bugs`）。
+> 再后续本地 edit：把 air interval 从 `BT_GAP_ADV_FAST_INT_{MIN,MAX}_1` (30/60 ms)
+> 改成固定 20 ms (`0x0020`)，空口速率从 ~22 Hz 提到 **50 Hz**；同步移除 `robot_pose.c`
+> 已是 3-sensor mean 的"中心位置"语义之前没强调的"3 个 sensor 出中点"承诺（已实现）。
+
+## 双路输出 (BLE + UART)
+
+除了 ~50 Hz 的 BLE 广播，固件还在 **UART0** 上以 115200 8N1 输出 100 Hz 的 ASCII
+位姿文本流，方便离线记录 / ROS 网桥 / 早期原型。
+
+nRF52833 DK 引脚对应：
+
+| 信号 | 引脚 | 说明 |
+|------|------|------|
+| UART0 TX | P0.06 | DK 虚拟 COM RX |
+| UART0 RX | P0.08 | DK 虚拟 COM TX |
+
+若实际接线不同，在 application overlay 里覆盖 pinctrl（参见
+`boards/nrf52833dk_nrf52833.overlay`）。
+
+### UART 文本格式
+
+每次位姿更新一行，ASCII，`\r\n` 结尾：
+
+```
+x=0.290 y=0.280 z=0.000 id=0x1234 mode=2D
+```
+
+- `x`、`y`、`z` 单位米，保留三位小数。
+- `id` 是 `NRF_FICR->DEVICEADDR[0]` 的低 16 位。
+- `mode` 是 `2D` 或 `3D`（取决于 `LIGHTHOUSE_MODE_3D`）。
+
+### Console / printk 状态
+
+`printk` 与 Zephyr console 在 UART0 上**已禁用**——该线专用于位姿文本流。
+调试日志请通过 RTT 输出：在 `prj.conf` 加 `CONFIG_LOG_BACKEND_RTT=y`，
+代码里用 `LOG_INF` / `LOG_WRN`。
