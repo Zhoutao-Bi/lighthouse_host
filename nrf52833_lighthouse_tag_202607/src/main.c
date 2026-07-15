@@ -12,6 +12,7 @@
 #include "pos.h"
 #include "robot_pose.h"
 #include "lighthouse_config.h"
+#include "lighthouse_pkt.h"
 
 static const lighthouse_point cal_pos[] = {
 	{0.0, 0.0, 0.0},
@@ -26,15 +27,6 @@ static const lighthouse_angles cal_angles[] = {
 };
 
 static lighthouse_result calib_result;
-
-typedef struct __attribute__((packed)) {
-	uint8_t mode;
-	uint8_t id_lo;
-	uint8_t id_hi;
-	float x_le;
-	float y_le;
-	float z_le;
-} lighthouse_pkt_t;
 
 #define POSE_Q_SIZE 4
 static struct {
