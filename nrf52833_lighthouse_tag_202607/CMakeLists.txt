@@ -14,6 +14,7 @@ target_sources(app PRIVATE
 	src/ts4231/ts4231_sensors.c
 	src/pos/pos.c
 	src/robot_pose/robot_pose.c
+	src/uart_out/uart_out.c
 )
 
 target_include_directories(app PRIVATE
@@ -24,4 +25,5 @@ target_include_directories(app PRIVATE
 	src/ts4231
 	src/pos
 	src/robot_pose
+	src/uart_out
 )
