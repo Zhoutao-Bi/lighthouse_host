@@ -304,3 +304,33 @@ x=0.290 y=0.280 z=0.000 id=0x1234 mode=2D
 `printk` 与 Zephyr console 在 UART0 上**已禁用**——该线专用于位姿文本流。
 调试日志请通过 RTT 输出：在 `prj.conf` 加 `CONFIG_LOG_BACKEND_RTT=y`，
 代码里用 `LOG_INF` / `LOG_WRN`。
+
+## 构建
+
+工具链：NCS v3.4.0 / Zephyr 4.4.0 / Zephyr SDK（含 `arm-zephyr-eabi`）。
+
+```bash
+# 一次性：把 toolchain bin 加进用户 PATH（新 shell 才生效）
+setx PATH "C:\ncs\toolchains\dcbdc366a1\opt\bin;%PATH%"
+setx PYTHONHOME "C:\ncs\toolchains\dcbdc366a1\opt"
+setx ZEPHYR_BASE "C:\ncs\v3.4.0\zephyr"
+setx ZEPHYR_TOOLCHAIN_VARIANT "zephyr"
+setx ZEPHYR_SDK_INSTALL_DIR "C:\ncs\toolchains\dcbdc366a1\opt\zephyr-sdk"
+# 再把 arm-zephyr-eabi/bin 临时加到当前 shell
+export PATH="$ZEPHYR_SDK_INSTALL_DIR/gnu/arm-zephyr-eabi/bin:$PATH"
+```
+
+build：
+```bash
+west build -b nrf52833dk/nrf52833 nrf52833_lighthouse_tag_202607/
+```
+
+> ⚠️ 早期本仓在 README 里写过 `nrf52833dk_nrf52833`（无 qualifier）。NCS v3.4 / Zephyr 4.x
+> 下该名已拆分，必须用 `nrf52833dk/nrf52833`（同 `west boards` 输出）。
+>
+> ⚠️ `ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb` + `GNUARMEMB_TOOLCHAIN_PATH` 是旧 GNU ARM
+> Embedded 工具链；本机用的是 Zephyr SDK，应为 `zephyr` + `ZEPHYR_SDK_INSTALL_DIR`。
+>
+> ⚠️ `west.exe` 是 stub launcher，依赖 `python.exe` 在 PATH 上。如果 `Scripts/`
+> 目录里没有 `python.exe`，west 静默 exit 1、无输出——这是"VS Code build 不报错
+> 但什么都没做"的常见原因。
