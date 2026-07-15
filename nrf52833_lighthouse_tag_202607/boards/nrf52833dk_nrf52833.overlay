@@ -30,4 +30,16 @@
 		d-gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
 		label = "TS4231 N3";
 	};
+
+	chosen {
+		/* Disable any chosen bindings the board DTS sets on uart0.
+		 * UART0 is dedicated to the pose text stream; console / shell /
+		 * bt-monitor / bt-c2h / mcumgr-uart must not mux onto it.
+		 */
+		/delete-property/ zephyr,console;
+		/delete-property/ zephyr,shell-uart;
+		/delete-property/ zephyr,uart-mcumgr;
+		/delete-property/ zephyr,bt-mon-uart;
+		/delete-property/ zephyr,bt-c2h-uart;
+	};
 };
