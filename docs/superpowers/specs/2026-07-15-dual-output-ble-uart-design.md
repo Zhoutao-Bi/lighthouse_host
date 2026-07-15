@@ -284,7 +284,7 @@ src/uart_out
 
 No automated test framework exists in this repo. Verification is manual:
 
-1. **Build:** `west build -b nrf52833dk_nrf52833 nrf52833_lighthouse_tag_202607/`
+1. **Build:** `west build -b nrf52833dk/nrf52833 nrf52833_lighthouse_tag_202607/`
    should succeed.
 2. **Console:** Confirm boot produces no `printk` chatter on UART0.
 3. **UART output:** Connect DK virtual COM at 115200 8N1. Expected line every

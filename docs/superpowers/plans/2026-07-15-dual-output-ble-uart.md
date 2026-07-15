@@ -60,7 +60,7 @@ Result: `lighthouse_pkt_t` continues to be used as before inside `main.c` (struc
 
 Run from repo root:
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build succeeds. (Pre-existing `ppi.c` ISR definition gap, flagged in spec §12, is out of scope here — if the build fails *only* on that, document it in the commit message and stop; otherwise fix the regression introduced by this task before committing.)
 
@@ -201,7 +201,7 @@ void uart_out_push(const lighthouse_pkt_t *pkt)
 - [ ] **Step 2: Build to confirm compilation**
 
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build fails because `CMakeLists.txt` does not yet reference `uart_out.c`. That is OK for this task — proceed.
 
@@ -259,7 +259,7 @@ target_include_directories(app PRIVATE
 - [ ] **Step 2: Build to confirm clean compilation**
 
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build still fails only because `prj.conf` and `main.c` are not yet updated (no `CONFIG_SERIAL`, no `uart_out_init` call). That is fine.
 
@@ -294,7 +294,7 @@ CONFIG_UART_NRF_UARTE=y
 - [ ] **Step 2: Build to confirm `CONFIG_SERIAL` is satisfied**
 
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build still fails on missing `uart_out_init` in `main.c` — fine, fixed in next task.
 
@@ -323,7 +323,7 @@ If the file currently binds `zephyr,console = &uart0` (because the user previous
 - [ ] **Step 2: Build (sanity)**
 
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build still fails on missing `uart_out_init` in `main.c` — fine, fixed in next task.
 
@@ -390,7 +390,7 @@ Leave the other two `printk` calls (`ts4231_n%d init fail/OK` and `device_id=...
 - [ ] **Step 5: Build to confirm full compilation succeeds**
 
 ```bash
-west build -b nrf52833dk_nrf52833 -p auto nrf52833_lighthouse_tag_202607/
+west build -b nrf52833dk/nrf52833 -p auto nrf52833_lighthouse_tag_202607/
 ```
 Expected: build succeeds (modulo the pre-existing `ppi.c` ISR gap noted in spec §12 — if it surfaces here, stop and follow the spec's "do not bundle the fix" guidance).
 
